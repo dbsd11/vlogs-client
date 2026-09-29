@@ -227,53 +227,6 @@ func (c *Client) sendBatch(data []byte, count int) {
 	}
 }
 
-// LogLLMRequest logs LLM request metrics
-func (c *Client) LogLLMRequest(model, endpoint string, inputTokens int, requestPayload string, duration time.Duration) {
-	if c == nil {
-		return
-	}
-
-	fields := map[string]string{
-		"type":         "llm_request",
-		"model":        model,
-		"endpoint":     endpoint,
-		"input_tokens": fmt.Sprintf("%d", inputTokens),
-		"duration":     fmt.Sprintf("%.2f", duration.Seconds()),
-	}
-
-	// Include full request body
-	if requestPayload != "" {
-		fields["request_body"] = requestPayload
-	}
-
-	c.Log("info", fmt.Sprintf("LLM request: %s, model: %s, tokens: %d, duration: %.2fs",
-		endpoint, model, inputTokens, duration.Seconds()), fields)
-}
-
-// LogLLMResponse logs LLM response metrics
-func (c *Client) LogLLMResponse(model, endpoint string, inputTokens, outputTokens int, responseContent string, duration time.Duration) {
-	if c == nil {
-		return
-	}
-
-	fields := map[string]string{
-		"type":          "llm_response",
-		"model":         model,
-		"endpoint":      endpoint,
-		"input_tokens":  fmt.Sprintf("%d", inputTokens),
-		"output_tokens": fmt.Sprintf("%d", outputTokens),
-		"total_tokens":  fmt.Sprintf("%d", inputTokens+outputTokens),
-		"duration":      fmt.Sprintf("%.2f", duration.Seconds()),
-	}
-
-	// Include full response content
-	if responseContent != "" {
-		fields["response_body"] = responseContent
-	}
-
-	c.Log("info", fmt.Sprintf("LLM response: %s, model: %s, input: %d, output: %d, duration: %.2fs",
-		endpoint, model, inputTokens, outputTokens, duration.Seconds()), fields)
-}
 
 // LogLLMError logs LLM error details
 func (c *Client) LogLLMError(model, endpoint, errorMsg string, duration time.Duration) {
@@ -282,11 +235,9 @@ func (c *Client) LogLLMError(model, endpoint, errorMsg string, duration time.Dur
 	}
 
 	fields := map[string]string{
-		"type":        "llm_error",
-		"model":       model,
-		"endpoint":    endpoint,
-		"error":       errorMsg,
-		"duration":    fmt.Sprintf("%.2f", duration.Seconds()),
+		"type":     "llm_error",
+		"model":    model,
+		"endpoint": endpoint,
 	}
 
 	c.Log("error", fmt.Sprintf("LLM error: %s, model: %s, error: %s, duration: %.2fs",
@@ -304,28 +255,25 @@ func (c *Client) LogLLMCallComplete(model, endpoint string, requestBody string, 
 	log.Printf("[VLogs] LogLLMCallComplete called: model=%s, input=%d, output=%d, duration=%.2fs", model, inputTokens, outputTokens, duration.Seconds())
 
 	fields := map[string]string{
-		"type":          "llm_call",
-		"model":         model,
-		"endpoint":      endpoint,
-		"input_tokens":  fmt.Sprintf("%d", inputTokens),
-		"output_tokens": fmt.Sprintf("%d", outputTokens),
-		"total_tokens":  fmt.Sprintf("%d", inputTokens+outputTokens),
-		"duration":      fmt.Sprintf("%.2f", duration.Seconds()),
+		"type":     "llm_call",
+		"model":    model,
+		"endpoint": endpoint,
 	}
 
-	// Include full request body
+	// Build message with all details
+	totalTokens := inputTokens + outputTokens
+	message := fmt.Sprintf("LLM call complete: %s, model: %s, input: %d tokens, output: %d tokens, total: %d tokens, duration: %.2fs",
+		endpoint, model, inputTokens, outputTokens, totalTokens, duration.Seconds())
+	
+	// Add request/response/error to message if present
 	if requestBody != "" {
-		fields["request_body"] = requestBody
+		message += fmt.Sprintf(", request_body: %s", requestBody)
 	}
-
-	// Include full response body
 	if responseBody != "" {
-		fields["response_body"] = responseBody
+		message += fmt.Sprintf(", response_body: %s", responseBody)
 	}
-
-	// Include error if present
 	if hasError && errorMsg != "" {
-		fields["error"] = errorMsg
+		message += fmt.Sprintf(", error: %s", errorMsg)
 	}
 
 	logLevel := "info"
@@ -333,8 +281,7 @@ func (c *Client) LogLLMCallComplete(model, endpoint string, requestBody string, 
 		logLevel = "error"
 	}
 
-	c.Log(logLevel, fmt.Sprintf("LLM call complete: %s, model: %s, input: %d, output: %d, duration: %.2fs",
-		endpoint, model, inputTokens, outputTokens, duration.Seconds()), fields)
+	c.Log(logLevel, message, fields)
 }
 
 // LogToolExecution logs tool execution metrics
@@ -349,22 +296,20 @@ func (c *Client) LogToolExecution(toolName, input, output string, duration time.
 	}
 
 	fields := map[string]string{
-		"type":        "tool_execution",
-		"tool_name":   toolName,
-		"duration":    fmt.Sprintf("%.2f", duration.Seconds()),
-		"success":     fmt.Sprintf("%t", success),
+		"type":      "tool_execution",
+		"tool_name": toolName,
 	}
 
-	// Only include input/output if not too large
-	if len(input) < 5000 {
-		fields["input"] = input
+	// Build message with all details
+	message := fmt.Sprintf("Tool %s executed in %.2fs, success: %t", toolName, duration.Seconds(), success)
+	if input != "" {
+		message += fmt.Sprintf(", input: %s", input)
 	}
-	if len(output) < 5000 {
-		fields["output"] = output
+	if output != "" {
+		message += fmt.Sprintf(", output: %s", output)
 	}
 
-	c.Log(level, fmt.Sprintf("Tool %s executed in %.2fs, success: %t",
-		toolName, duration.Seconds(), success), fields)
+	c.Log(level, message, fields)
 }
 
 // Global client instance for easy access
