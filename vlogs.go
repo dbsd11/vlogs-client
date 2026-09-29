@@ -267,13 +267,13 @@ func (c *Client) LogLLMCallComplete(model, endpoint string, requestBody string, 
 	
 	// Add request/response/error to message if present
 	if requestBody != "" {
-		message += fmt.Sprintf(", request_body: %s", requestBody)
+		message += fmt.Sprintf(",\n request_body: %s", requestBody)
 	}
 	if responseBody != "" {
-		message += fmt.Sprintf(", response_body: %s", responseBody)
+		message += fmt.Sprintf(",\n response_body: %s", responseBody)
 	}
 	if hasError && errorMsg != "" {
-		message += fmt.Sprintf(", error: %s", errorMsg)
+		message += fmt.Sprintf(",\n error: %s", errorMsg)
 	}
 
 	logLevel := "info"
@@ -303,10 +303,10 @@ func (c *Client) LogToolExecution(toolName, input, output string, duration time.
 	// Build message with all details
 	message := fmt.Sprintf("Tool %s executed in %.2fs, success: %t", toolName, duration.Seconds(), success)
 	if input != "" {
-		message += fmt.Sprintf(", input: %s", input)
+		message += fmt.Sprintf(",\n input: %s", input)
 	}
 	if output != "" {
-		message += fmt.Sprintf(", output: %s", output)
+		message += fmt.Sprintf(",\n output: %s", output)
 	}
 
 	c.Log(level, message, fields)
